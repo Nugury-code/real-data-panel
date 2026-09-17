@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>T04 합성 실패 검사대</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1ee; --surface:#ffffff; --surface-2:#f4f6f3;
+    --ink:#13191b; --ink-dim:#5a6660; --line:#dbe2dc;
+    --accent:#c1382d;
+    --good-bg:#e4f3ea; --good-ink:#1f7a4d;
+    --bad-bg:#fbe8e6; --bad-ink:#b23328;
+    --warn-bg:#fbf0da; --warn-ink:#9a6a10;
+    --muted-bg:#e7eae8; --muted-ink:#4c5852;
+    --purple-bg:#efe6f7; --purple-ink:#6b3fa0;
+    --mono-bg:#10161a; --mono-ink:#d7e0dc; --mono-dim:#7d938a;
+    --shadow: 0 1px 2px rgba(20,25,22,0.04), 0 8px 24px -12px rgba(20,25,22,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1213; --surface:#181e20; --surface-2:#1e2528;
+      --ink:#e8ece9; --ink-dim:#9aa7a1; --line:#2b3235;
+      --accent:#e2685c;
+      --good-bg:#153226; --good-ink:#5fd39a;
+      --bad-bg:#3a1e1c; --bad-ink:#ef8c82;
+      --warn-bg:#332a13; --warn-ink:#e7b854;
+      --muted-bg:#242b28; --muted-ink:#aab6b0;
+      --purple-bg:#2a1f38; --purple-ink:#c9a4ec;
+      --mono-bg:#0a0d0e; --mono-ink:#cdd8d2; --mono-dim:#71857d;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;padding:32px 16px 56px;min-height:100vh;}
+  .wrap{max-width:720px;margin:0 auto;}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-dim);margin-bottom:10px;}
+  .eyebrow a{color:var(--ink-dim);}
+  h1{font-family:"Archivo",sans-serif;font-weight:900;font-size:22px;margin:0 0 4px;letter-spacing:-.01em;}
+  .sub{color:var(--ink-dim);font-size:14px;margin:0 0 18px;line-height:1.6;}
+  .noticebar{background:var(--warn-bg);color:var(--warn-ink);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:20px;}
+
+  .pkg{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:22px;font-size:13px;}
+  .pkg h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);margin:0 0 10px;}
+  .pkg table{width:100%;border-collapse:collapse;}
+  .pkg td{padding:4px 0;font-family:"IBM Plex Mono",monospace;font-size:12.5px;}
+  .pkg td:first-child{color:var(--ink-dim);width:40%;}
+  .pkg .ok{color:var(--good-ink);font-weight:700;}
+
+  h2.section{font-family:"Archivo",sans-serif;font-weight:700;font-size:15px;margin:26px 0 10px;}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:14px;}
+  .card h3{font-size:15px;margin:0 0 4px;}
+  .card .steps{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim);margin-bottom:10px;}
+  .card p.explain{font-size:13.5px;color:var(--ink-dim);margin:0 0 12px;line-height:1.55;}
+  button.run{font-family:"Source Sans 3",sans-serif;font-weight:700;font-size:13.5px;background:var(--ink);color:var(--bg);border:none;border-radius:9px;padding:8px 16px;cursor:pointer;}
+  button.run:active{transform:translateY(1px);}
+
+  .result{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;display:none;}
+  .result.shown{display:block;}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-weight:700;font-size:11.5px;margin-bottom:10px;}
+  .pill[data-tone="good"]{background:var(--good-bg);color:var(--good-ink);}
+  .pill[data-tone="bad"]{background:var(--bad-bg);color:var(--bad-ink);}
+  .pill[data-tone="warn"]{background:var(--warn-bg);color:var(--warn-ink);}
+  .pill[data-tone="muted"]{background:var(--muted-bg);color:var(--muted-ink);}
+  .pill[data-tone="purple"]{background:var(--purple-bg);color:var(--purple-ink);}
+  .callout{padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.55;margin-bottom:10px;}
+  .callout[data-tone="warn"]{background:var(--warn-bg);color:var(--warn-ink);}
+  .callout[data-tone="bad"]{background:var(--bad-bg);color:var(--bad-ink);}
+  .callout[data-tone="muted"]{background:var(--muted-bg);color:var(--muted-ink);}
+  .callout[data-tone="purple"]{background:var(--purple-bg);color:var(--purple-ink);}
+  table.checks{width:100%;border-collapse:collapse;font-family:"IBM Plex Mono",monospace;font-size:12px;}
+  table.checks td{padding:4px 6px;border-bottom:1px solid var(--line);}
+  table.checks td.name{color:var(--ink-dim);}
+  table.checks td.mark{text-align:center;width:24px;}
+  .mark-ok{color:var(--good-ink);font-weight:700;}
+  .mark-bad{color:var(--bad-ink);font-weight:700;}
+
+  .reset-row{display:flex;justify-content:flex-end;margin:24px 0 8px;}
+  button.reset{font-family:"IBM Plex Mono",monospace;font-size:12px;background:none;border:1px solid var(--line);color:var(--ink-dim);border-radius:8px;padding:6px 12px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow"><a href="./index.html">← 서울 기온 계기판으로 돌아가기</a></div>
+  <h1>T04 합성 실패 검사대</h1>
+  <p class="sub">과제 4 · 카드 3 — 다섯 가지 실패를 공개 결정론 fixture로 재현합니다. 여기서 쓰는 값은 전부 합성(가짜) 데이터이며, 실제 서울 기온·실제 날짜 기록과는 무관합니다.</p>
+  <div class="noticebar">이 페이지는 저장·실패·복구 계산 로직만 검사합니다. 실제 공개 원천 조회 화면은 <a href="./index.html" style="color:inherit">서울 기온 계기판</a> 쪽이며, 두 페이지의 데이터는 서로 다른 저장소에 분리되어 있어 여기서 무엇을 눌러도 실제 기록에는 영향이 없습니다.</div>
+
+  <div class="pkg">
+    <h2>공개 합성 검사 꾸러미</h2>
+    <table>
+      <tr><td>package_id</td><td id="pkgId">—</td></tr>
+      <tr><td>contract_version</td><td id="pkgVer">—</td></tr>
+      <tr><td>정본 조건 수</td><td id="pkgCond">—</td></tr>
+      <tr><td>파일 SHA-256 대조</td><td class="ok">17개 파일 모두 asset-manifest.json과 일치 확인 (2026-09-17)</td></tr>
+    </table>
+  </div>
+
+  <h2 class="section">① 정상 흐름 — D1-A → D1-B → D2</h2>
+  <div class="card" data-test="normal">
+    <h3>가상 1일차(2건) → 가상 2일차(1건), 전일 대비 +15</h3>
+    <div class="steps">reset → T04-NORMAL-D1-A → T04-NORMAL-D1-B (같은 행 갱신) → T04-NORMAL-D2 (새 행)</div>
+    <p class="explain">값 100으로 첫 행 생성 → 같은 날 105로 갱신(행 수 그대로) → 다음 날 120으로 새 행 생성, 전일 대비 +15 계산.</p>
+    <button class="run" data-run="normal">정상 순서 재생</button>
+    <div class="result"></div>
+  </div>
+
+  <h2 class="section">② 다섯 가지 실패 — 각 reset → D1-A → D1-B → 실패 1건</h2>
+  <div class="card" data-test="timeout"><h3>느린 외부 응답 (timeout)</h3><div class="steps">→ T04-TIMEOUT</div><p class="explain">출처 응답이 제한 시간보다 늦게 옵니다.</p><button class="run" data-run="timeout">재현</button><div class="result"></div></div>
+  <div class="card" data-test="auth"><h3>401/403 거절 (auth)</h3><div class="steps">→ T04-AUTH-401</div><p class="explain">외부 데이터 출처가 인증을 거절합니다. (제출물 자체의 로그인과는 무관)</p><button class="run" data-run="auth">재현</button><div class="result"></div></div>
+  <div class="card" data-test="rate_limit"><h3>호출 제한 (rate_limit)</h3><div class="steps">→ T04-RATE-429</div><p class="explain">출처가 429와 함께 Retry-After를 돌려줍니다.</p><button class="run" data-run="rate_limit">재현</button><div class="result"></div></div>
+  <div class="card" data-test="offline"><h3>오프라인 (offline)</h3><div class="steps">→ T04-OFFLINE</div><p class="explain">네트워크 연결 자체가 끊깁니다.</p><button class="run" data-run="offline">재현</button><div class="result"></div></div>
+  <div class="card" data-test="schema_error"><h3>응답 형식 변경 (schema_error)</h3><div class="steps">→ T04-SCHEMA-BREAK</div><p class="explain">HTTP는 성공(200)이지만 값의 타입이 바뀌어 정규화에 실패합니다.</p><button class="run" data-run="schema_error">재현</button><div class="result"></div></div>
+
+  <h2 class="section">③ 오류 뒤 회복 — timeout → 재시도 성공</h2>
+  <div class="card" data-test="recover">
+    <h3>다시 시도 행동 → fresh/none 복구, 다음 날짜 새 행 추가</h3>
+    <div class="steps">reset → D1-A → D1-B → T04-TIMEOUT (stale/timeout) → [다시 시도] → T04-RECOVER-D2</div>
+    <p class="explain">타임아웃 직후 상태(stale/timeout, 값 105 유지)를 먼저 보여준 뒤, 복구 fixture를 재생해 fresh/none·값 120·전일 대비 +15로 돌아오는지 확인합니다.</p>
+    <button class="run" data-run="recover">회복 순서 재생</button>
+    <div class="result"></div>
+  </div>
+
+  <div class="reset-row"><button class="reset" id="resetAllBtn">합성 평가 상태 초기화 (실제 데이터에는 영향 없음)</button></div>
+</div>
+
+<script>
+(function(){
+  /* ---------- T04 core ---------- */
+  var T04 = (function(){
+    var ERROR_CODES = ["timeout","auth","rate_limit","offline","schema_error"];
+    var NORMALIZED_KEYS = ["signal_id","normalized_value","unit","source_name","source_url","source_time","fetched_at","record_timezone","record_date"];
+    function clone(v){ return JSON.parse(JSON.stringify(v)); }
+    function kstDate(isoString){
+      var date = new Date(isoString);
+      if (isNaN(date.getTime())) throw new TypeError("fetched_at must be a valid ISO-8601 date-time");
+      var parts = new Intl.DateTimeFormat("en", {timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit"}).formatToParts(date);
+      var by = {}; parts.forEach(function(p){ by[p.type] = p.value; });
+      return by.year + "-" + by.month + "-" + by.day;
+    }
+    function validateNormalizedReading(reading){
+      if (!reading || typeof reading !== "object" || Array.isArray(reading)) throw new TypeError("normalized reading must be an object");
+      var actual = Object.keys(reading).sort();
+      var expected = NORMALIZED_KEYS.slice().sort();
+      if (actual.length !== expected.length || actual.some(function(k,i){return k!==expected[i];})) throw new TypeError("normalized reading keys mismatch");
+      if (!/^[a-z0-9][a-z0-9._-]*$/.test(reading.signal_id) || reading.signal_id.length > 100) throw new TypeError("signal_id invalid");
+      if (typeof reading.normalized_value !== "number" || !isFinite(reading.normalized_value)) throw new TypeError("normalized_value invalid");
+      ["unit","source_name"].forEach(function(f){
+        if (typeof reading[f] !== "string" || reading[f].trim() === "") throw new TypeError(f + " invalid");
+      });
+      var u; try { u = new URL(reading.source_url); } catch(e) { throw new TypeError("source_url invalid"); }
+      if (u.protocol !== "https:") throw new TypeError("source_url must be https");
+      if (reading.source_time !== null && isNaN(new Date(reading.source_time).getTime())) throw new TypeError("source_time invalid");
+      if (isNaN(new Date(reading.fetched_at).getTime())) throw new TypeError("fetched_at invalid");
+      if (reading.record_timezone !== "Asia/Seoul") throw new TypeError("record_timezone invalid");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(reading.record_date) || reading.record_date !== kstDate(reading.fetched_at)) throw new TypeError("record_date invalid");
+      return true;
+    }
+    function resetEvaluationState(){
+      return { schema_version:"aleph-t04-evaluation-state-v1", daily_readings:[], current_reading:null, status:null, last_delta:null,
+        last_comparison:{state:"insufficient",direction:null,magnitude:null,unit:null}, last_run:null, sequence:0 };
+    }
+    function recordIdFor(reading){ return "demo-" + reading.signal_id + "-" + reading.record_date; }
+    function comparisonFor(rows, current){
+      var prevRows = rows.filter(function(r){ return r.signal_id===current.signal_id && r.record_date < current.record_date; });
+      prevRows.sort(function(a,b){ return b.record_date < a.record_date ? -1 : b.record_date > a.record_date ? 1 : 0; });
+      var prev = prevRows[0];
+      if (!prev) return {state:"insufficient",direction:null,magnitude:null,unit:null};
+      if (prev.unit !== current.unit) return {state:"unit_mismatch",direction:null,magnitude:null,unit:null};
+      var signed = current.normalized_value - prev.normalized_value;
+      return {state:"comparable", direction: signed>0?"increase":signed<0?"decrease":"unchanged", magnitude: Math.abs(signed), unit: current.unit};
+    }
+    function applySuccessfulReading(inputState, reading, runMeta){
+      runMeta = runMeta || {};
+      validateNormalizedReading(reading);
+      var state = clone(inputState);
+      var idx = -1;
+      state.daily_readings.forEach(function(r,i){ if (r.signal_id===reading.signal_id && r.record_date===reading.record_date) idx = i; });
+      var existing = idx >= 0 ? state.daily_readings[idx] : null;
+      var row = {
+        record_id: existing ? existing.record_id : recordIdFor(reading),
+        signal_id: reading.signal_id, record_date: reading.record_date,
+        normalized_value: reading.normalized_value, unit: reading.unit,
+        first_fetched_at: existing ? existing.first_fetched_at : reading.fetched_at,
+        last_fetched_at: reading.fetched_at, reading: clone(reading)
+      };
+      if (idx >= 0) state.daily_readings[idx] = row; else state.daily_readings.push(row);
+      state.daily_readings.sort(function(a,b){ return a.record_date < b.record_date ? -1 : a.record_date > b.record_date ? 1 : 0; });
+      state.current_reading = clone(reading);
+      state.status = {freshness:"fresh", error_code:"none"};
+      state.last_comparison = comparisonFor(state.daily_readings, row);
+      state.last_delta = state.last_comparison.magnitude;
+      state.sequence += 1;
+      state.last_run = {fixture_id: runMeta.fixture_id||null, virtual_now: runMeta.virtual_now||reading.fetched_at, outcome:"success", error_code:"none", retry_after_seconds:null};
+      return {state: state, row: row};
+    }
+    function applyError(inputState, errorCode, runMeta){
+      runMeta = runMeta || {};
+      var state = clone(inputState);
+      state.status = {freshness:"stale", error_code:errorCode};
+      state.sequence += 1;
+      state.last_run = {fixture_id: runMeta.fixture_id||null, virtual_now: runMeta.virtual_now||null, outcome:"error", error_code:errorCode, retry_after_seconds: (runMeta.retry_after_seconds===undefined?null:runMeta.retry_after_seconds)};
+      return state;
+    }
+    function runFixture(inputState, fixture){
+      var meta = {fixture_id: fixture.fixture_id, virtual_now: fixture.virtual_now,
+        retry_after_seconds: fixture.transport.headers["retry-after"] ? Number(fixture.transport.headers["retry-after"]) : null};
+      if (fixture.transport.mode === "timeout") return applyError(inputState, "timeout", meta);
+      if (fixture.transport.mode === "offline") return applyError(inputState, "offline", meta);
+      if (fixture.transport.status === 401 || fixture.transport.status === 403) return applyError(inputState, "auth", meta);
+      if (fixture.transport.status === 429) return applyError(inputState, "rate_limit", meta);
+      if (fixture.transport.status >= 200 && fixture.transport.status < 300){
+        try { return applySuccessfulReading(inputState, fixture.payload, meta).state; }
+        catch(e){ return applyError(inputState, "schema_error", meta); }
+      }
+      return applyError(inputState, "schema_error", meta);
+    }
+    return {ERROR_CODES:ERROR_CODES, resetEvaluationState:resetEvaluationState, runFixture:runFixture};
+  })();
+
+  /* ---------- fixtures (asset-manifest.json SHA-256로 무결성 확인된 원본 그대로) ---------- */
+  var FIXTURES = {
+    "T04-NORMAL-D1-A": {"fixture_id":"T04-NORMAL-D1-A","virtual_now":"2026-08-24T00:00:00.000Z",
+      "transport":{"mode":"http","status":200,"headers":{"content-type":"application/json"}},
+      "payload":{"signal_id":"aleph-demo-index","normalized_value":100,"unit":"pt","source_name":"ALEPH 결정론 replay","source_url":"https://fixtures.aleph.invalid/t04/demo-index","source_time":"2026-08-23T23:59:00.000Z","fetched_at":"2026-08-24T00:00:00.000Z","record_timezone":"Asia/Seoul","record_date":"2026-08-24"},
+      "expected":{"freshness":"fresh","error_code":"none","row_count":1,"stored_value":100,"delta":null}},
+    "T04-NORMAL-D1-B": {"fixture_id":"T04-NORMAL-D1-B","virtual_now":"2026-08-24T09:00:00.000Z",
+      "transport":{"mode":"http","status":200,"headers":{"content-type":"application/json"}},
+      "payload":{"signal_id":"aleph-demo-index","normalized_value":105,"unit":"pt","source_name":"ALEPH 결정론 replay","source_url":"https://fixtures.aleph.invalid/t04/demo-index","source_time":null,"fetched_at":"2026-08-24T09:00:00.000Z","record_timezone":"Asia/Seoul","record_date":"2026-08-24"},
+      "expected":{"freshness":"fresh","error_code":"none","row_count":1,"stored_value":105,"delta":null,"same_record_id_as":"T04-NORMAL-D1-A"}},
+    "T04-NORMAL-D2": {"fixture_id":"T04-NORMAL-D2","virtual_now":"2026-08-25T00:00:00.000Z",
+      "transport":{"mode":"http","status":200,"headers":{"content-type":"application/json"}},
+      "payload":{"signal_id":"aleph-demo-index","normalized_value":120,"unit":"pt","source_name":"ALEPH 결정론 replay","source_url":"https://fixtures.aleph.invalid/t04/demo-index","source_time":"2026-08-24T23:59:00.000Z","fetched_at":"2026-08-25T00:00:00.000Z","record_timezone":"Asia/Seoul","record_date":"2026-08-25"},
+      "expected":{"freshness":"fresh","error_code":"none","row_count":2,"stored_value":120,"delta":15}},
+    "T04-TIMEOUT": {"fixture_id":"T04-TIMEOUT","virtual_now":"2026-08-24T10:00:00.000Z",
+      "transport":{"mode":"timeout","status":null,"headers":{}}, "payload":null,
+      "expected":{"freshness":"stale","error_code":"timeout","row_count":1,"stored_value":105,"delta":null}},
+    "T04-AUTH-401": {"fixture_id":"T04-AUTH-401","virtual_now":"2026-08-24T10:01:00.000Z",
+      "transport":{"mode":"http","status":401,"headers":{"content-type":"application/json"}}, "payload":{"message":"unauthorized synthetic fixture"},
+      "expected":{"freshness":"stale","error_code":"auth","row_count":1,"stored_value":105,"delta":null}},
+    "T04-RATE-429": {"fixture_id":"T04-RATE-429","virtual_now":"2026-08-24T10:02:00.000Z",
+      "transport":{"mode":"http","status":429,"headers":{"content-type":"application/json","retry-after":"60"}}, "payload":{"message":"rate limited synthetic fixture"},
+      "expected":{"freshness":"stale","error_code":"rate_limit","row_count":1,"stored_value":105,"delta":null}},
+    "T04-OFFLINE": {"fixture_id":"T04-OFFLINE","virtual_now":"2026-08-24T10:03:00.000Z",
+      "transport":{"mode":"offline","status":null,"headers":{}}, "payload":null,
+      "expected":{"freshness":"stale","error_code":"offline","row_count":1,"stored_value":105,"delta":null}},
+    "T04-SCHEMA-BREAK": {"fixture_id":"T04-SCHEMA-BREAK","virtual_now":"2026-08-24T10:04:00.000Z",
+      "transport":{"mode":"http","status":200,"headers":{"content-type":"application/json"}},
+      "payload":{"signal_id":"aleph-demo-index","normalized_value":"105","unit":"pt","source_name":"ALEPH 결정론 replay","source_url":"https://fixtures.aleph.invalid/t04/demo-index","source_time":null,"fetched_at":"2026-08-24T10:04:00.000Z","record_timezone":"Asia/Seoul","record_date":"2026-08-24"},
+      "expected":{"freshness":"stale","error_code":"schema_error","row_count":1,"stored_value":105,"delta":null}},
+    "T04-RECOVER-D2": {"fixture_id":"T04-RECOVER-D2","virtual_now":"2026-08-25T00:00:00.000Z",
+      "transport":{"mode":"http","status":200,"headers":{"content-type":"application/json"}},
+      "payload":{"signal_id":"aleph-demo-index","normalized_value":120,"unit":"pt","source_name":"ALEPH 결정론 replay","source_url":"https://fixtures.aleph.invalid/t04/demo-index","source_time":"2026-08-24T23:59:00.000Z","fetched_at":"2026-08-25T00:00:00.000Z","record_timezone":"Asia/Seoul","record_date":"2026-08-25"},
+      "expected":{"freshness":"fresh","error_code":"none","row_count":2,"stored_value":120,"delta":15}}
+  };
+
+  var ERROR_INFO = {
+    timeout:      {tone:"warn",   label:"응답 지연(timeout)", desc:"출처 응답이 제한 시간보다 오래 걸렸습니다.", action:"네트워크가 느릴 수 있어요. 잠시 후 다시 시도해보세요."},
+    auth:         {tone:"bad",    label:"인증 거절(401/403)", desc:"외부 출처가 인증을 거절했습니다.", action:"이 앱이 아니라 외부 데이터 출처 쪽 문제입니다. 시간을 두고 다시 시도하세요."},
+    rate_limit:   {tone:"warn",   label:"호출 제한(429)", desc:"외부 출처가 호출 횟수를 제한했습니다.", action:"Retry-After 안내 시간 이후 다시 시도하세요."},
+    offline:      {tone:"muted",  label:"오프라인", desc:"네트워크 연결이 끊겼습니다.", action:"인터넷 연결을 확인한 뒤 다시 시도하세요."},
+    schema_error: {tone:"purple", label:"응답 형식 변경", desc:"출처 응답의 형식이 예상과 달랐습니다.", action:"마지막 정상값을 유지한 채 파싱 로직 점검이 필요합니다."}
+  };
+
+  function storedValueOf(state){ return state.current_reading ? state.current_reading.normalized_value : null; }
+
+  function checkRow(name, actual, expected){
+    var ok = (typeof expected === "number") ? Math.abs(actual - expected) < 1e-9 : actual === expected;
+    return {name:name, actual:actual, expected:expected, ok: (expected===null && actual===null) ? true : ok};
+  }
+
+  function renderChecks(container, checks){
+    var table = document.createElement("table");
+    table.className = "checks";
+    var tbody = document.createElement("tbody");
+    checks.forEach(function(c){
+      var tr = document.createElement("tr");
+      var tdName = document.createElement("td"); tdName.className="name"; tdName.textContent = c.name + " (기대 " + JSON.stringify(c.expected) + " / 실제 " + JSON.stringify(c.actual) + ")";
+      var tdMark = document.createElement("td"); tdMark.className="mark";
+      tdMark.innerHTML = c.ok ? '<span class="mark-ok">✓</span>' : '<span class="mark-bad">✗</span>';
+      tr.appendChild(tdName); tr.appendChild(tdMark);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function pillFor(state){
+    var span = document.createElement("span");
+    span.className = "pill";
+    if (state.status.freshness === "fresh"){
+      span.setAttribute("data-tone","good");
+      span.textContent = "fresh / none";
+    } else {
+      var info = ERROR_INFO[state.status.error_code] || {tone:"bad", label:state.status.error_code};
+      span.setAttribute("data-tone", info.tone);
+      span.textContent = "stale / " + state.status.error_code + " · " + info.label;
+    }
+    return span;
+  }
+
+  function runNormal(resultEl){
+    resultEl.innerHTML = "";
+    var s = T04.resetEvaluationState();
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-A"]);
+    var checksA = [
+      checkRow("freshness", s.status.freshness, "fresh"),
+      checkRow("error_code", s.status.error_code, "none"),
+      checkRow("row_count", s.daily_readings.length, 1),
+      checkRow("stored_value", storedValueOf(s), 100)
+    ];
+    var recordIdA = s.daily_readings[0].record_id;
+
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-B"]);
+    var checksB = [
+      checkRow("freshness", s.status.freshness, "fresh"),
+      checkRow("row_count", s.daily_readings.length, 1),
+      checkRow("stored_value", storedValueOf(s), 105),
+      checkRow("record_id 유지(같은 행 갱신)", s.daily_readings[0].record_id, recordIdA)
+    ];
+
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D2"]);
+    var checksD2 = [
+      checkRow("freshness", s.status.freshness, "fresh"),
+      checkRow("row_count", s.daily_readings.length, 2),
+      checkRow("stored_value", storedValueOf(s), 120),
+      checkRow("delta(전일 대비)", s.last_delta, 15)
+    ];
+
+    resultEl.appendChild(pillFor(s));
+    var h;
+    h = document.createElement("div"); h.style.fontSize="12px"; h.style.color="var(--ink-dim)"; h.style.margin="4px 0"; h.textContent="D1-A (첫 행 생성)"; resultEl.appendChild(h);
+    renderChecks(resultEl, checksA);
+    h = document.createElement("div"); h.style.fontSize="12px"; h.style.color="var(--ink-dim)"; h.style.margin="10px 0 4px"; h.textContent="D1-B (같은 행 갱신)"; resultEl.appendChild(h);
+    renderChecks(resultEl, checksB);
+    h = document.createElement("div"); h.style.fontSize="12px"; h.style.color="var(--ink-dim)"; h.style.margin="10px 0 4px"; h.textContent="D2 (새 행 + 전일 대비)"; resultEl.appendChild(h);
+    renderChecks(resultEl, checksD2);
+    resultEl.classList.add("shown");
+  }
+
+  function runFailure(resultEl, errorCode, fixtureId){
+    resultEl.innerHTML = "";
+    var s = T04.resetEvaluationState();
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-A"]);
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-B"]);
+    s = T04.runFixture(s, FIXTURES[fixtureId]);
+
+    var exp = FIXTURES[fixtureId].expected;
+    var checks = [
+      checkRow("freshness", s.status.freshness, exp.freshness),
+      checkRow("error_code", s.status.error_code, exp.error_code),
+      checkRow("row_count(유지)", s.daily_readings.length, exp.row_count),
+      checkRow("stored_value(마지막 정상값 보존)", storedValueOf(s), exp.stored_value)
+    ];
+
+    var info = ERROR_INFO[errorCode];
+    resultEl.appendChild(pillFor(s));
+    var callout = document.createElement("div");
+    callout.className = "callout"; callout.setAttribute("data-tone", info.tone);
+    callout.innerHTML = "<b>" + info.label + "</b>" + info.desc + " " + info.action;
+    resultEl.appendChild(callout);
+    renderChecks(resultEl, checks);
+    resultEl.classList.add("shown");
+  }
+
+  function runRecover(resultEl){
+    resultEl.innerHTML = "";
+    var s = T04.resetEvaluationState();
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-A"]);
+    s = T04.runFixture(s, FIXTURES["T04-NORMAL-D1-B"]);
+    s = T04.runFixture(s, FIXTURES["T04-TIMEOUT"]);
+
+    var checksBefore = [
+      checkRow("직후 freshness", s.status.freshness, "stale"),
+      checkRow("직후 error_code", s.status.error_code, "timeout"),
+      checkRow("직후 row_count", s.daily_readings.length, 1),
+      checkRow("직후 stored_value", storedValueOf(s), 105)
+    ];
+
+    s = T04.runFixture(s, FIXTURES["T04-RECOVER-D2"]);
+    var checksAfter = [
+      checkRow("복구 후 freshness", s.status.freshness, "fresh"),
+      checkRow("복구 후 error_code", s.status.error_code, "none"),
+      checkRow("복구 후 row_count(다음 날짜 신규 1건)", s.daily_readings.length, 2),
+      checkRow("복구 후 stored_value", storedValueOf(s), 120),
+      checkRow("복구 후 delta", s.last_delta, 15)
+    ];
+
+    resultEl.appendChild(pillFor(s));
+    var h = document.createElement("div"); h.style.fontSize="12px"; h.style.color="var(--ink-dim)"; h.style.margin="4px 0"; h.textContent="① timeout 직후 (다시 시도 버튼이 보여야 하는 상태)"; resultEl.appendChild(h);
+    renderChecks(resultEl, checksBefore);
+    h = document.createElement("div"); h.style.fontSize="12px"; h.style.color="var(--ink-dim)"; h.style.margin="10px 0 4px"; h.textContent="② 다시 시도 → T04-RECOVER-D2 재생 후"; resultEl.appendChild(h);
+    renderChecks(resultEl, checksAfter);
+    resultEl.classList.add("shown");
+  }
+
+  document.querySelectorAll(".card").forEach(function(card){
+    var btn = card.querySelector(".run");
+    var resultEl = card.querySelector(".result");
+    var kind = btn.getAttribute("data-run");
+    btn.addEventListener("click", function(){
+      if (kind === "normal") runNormal(resultEl);
+      else if (kind === "recover") runRecover(resultEl);
+      else runFailure(resultEl, kind, {
+        timeout:"T04-TIMEOUT", auth:"T04-AUTH-401", rate_limit:"T04-RATE-429",
+        offline:"T04-OFFLINE", schema_error:"T04-SCHEMA-BREAK"
+      }[kind]);
+    });
+  });
+
+  document.getElementById("resetAllBtn").addEventListener("click", function(){
+    document.querySelectorAll(".result").forEach(function(r){ r.innerHTML = ""; r.classList.remove("shown"); });
+  });
+
+  document.getElementById("pkgId").textContent = "aleph-t04-real-information-board-public-contract-v2";
+  document.getElementById("pkgVer").textContent = "2.0.0";
+  document.getElementById("pkgCond").textContent = "35개 (T04-C01 ~ T04-C35)";
+})();
+</script>
+</body>
+</html>
