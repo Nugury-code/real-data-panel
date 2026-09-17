@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>서울 기온 계기판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1ee;
+    --surface:#ffffff;
+    --surface-2:#f4f6f3;
+    --ink:#13191b;
+    --ink-dim:#5a6660;
+    --line:#dbe2dc;
+    --accent:#c1382d;
+    --accent-ink:#ffffff;
+    --good-bg:#e4f3ea;
+    --good-ink:#1f7a4d;
+    --bad-bg:#fbe8e6;
+    --bad-ink:#b23328;
+    --mono-bg:#10161a;
+    --mono-ink:#d7e0dc;
+    --mono-dim:#7d938a;
+    --shadow: 0 1px 2px rgba(20,25,22,0.04), 0 8px 24px -12px rgba(20,25,22,0.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0e1213;
+      --surface:#181e20;
+      --surface-2:#1e2528;
+      --ink:#e8ece9;
+      --ink-dim:#9aa7a1;
+      --line:#2b3235;
+      --accent:#e2685c;
+      --accent-ink:#14181a;
+      --good-bg:#153226;
+      --good-ink:#5fd39a;
+      --bad-bg:#3a1e1c;
+      --bad-ink:#ef8c82;
+      --mono-bg:#0a0d0e;
+      --mono-ink:#cdd8d2;
+      --mono-dim:#71857d;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Source Sans 3",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    padding:32px 16px 48px;
+    min-height:100vh;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  .eyebrow{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.03em;
+    color:var(--ink-dim);margin-bottom:14px;flex-wrap:wrap;
+  }
+  .status{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 10px;border-radius:999px;font-weight:600;font-size:12px;
+    background:var(--surface-2);color:var(--ink-dim);border:1px solid var(--line);
+  }
+  .status .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);}
+  .status[data-state="ok"]{background:var(--good-bg);color:var(--good-ink);border-color:transparent;}
+  .status[data-state="ok"] .dot{background:var(--good-ink);}
+  .status[data-state="err"]{background:var(--bad-bg);color:var(--bad-ink);border-color:transparent;}
+  .status[data-state="err"] .dot{background:var(--bad-ink);}
+
+  h1{
+    font-family:"Archivo",sans-serif;font-weight:900;font-size:22px;margin:0 0 4px;
+    letter-spacing:-.01em;
+  }
+  .sub{color:var(--ink-dim);font-size:14px;margin:0 0 22px;}
+
+  .panel{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;
+  }
+
+  .value-tile{padding:28px 24px 24px;text-align:left;}
+  .value-tile .loc{
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-dim);
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;
+  }
+  .value-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .value-num{
+    font-family:"Archivo",sans-serif;font-weight:900;font-size:76px;line-height:1;
+    letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--accent);
+  }
+  .value-unit{font-family:"Archivo",sans-serif;font-weight:700;font-size:26px;color:var(--ink-dim);}
+  .value-desc{margin-top:10px;font-size:14.5px;color:var(--ink-dim);}
+  .value-desc b{color:var(--ink);font-weight:600;}
+
+  .meta{border-top:1px solid var(--line);}
+  .meta-row{
+    display:flex;justify-content:space-between;gap:16px;align-items:baseline;
+    padding:13px 24px;border-bottom:1px solid var(--line);font-size:14px;
+  }
+  .meta-row:last-child{border-bottom:none;}
+  .meta-row .k{color:var(--ink-dim);flex:0 0 auto;}
+  .meta-row .v{
+    font-family:"IBM Plex Mono",monospace;font-size:13px;text-align:right;
+    color:var(--ink);word-break:break-word;
+  }
+
+  .actions{display:flex;gap:10px;align-items:center;margin:18px 0 22px;flex-wrap:wrap;}
+  button.refresh{
+    font-family:"Source Sans 3",sans-serif;font-weight:700;font-size:14px;
+    background:var(--ink);color:var(--bg);border:none;border-radius:10px;
+    padding:10px 18px;cursor:pointer;
+  }
+  button.refresh:active{transform:translateY(1px);}
+  button.refresh:disabled{opacity:.55;cursor:default;}
+  .hint{font-size:12.5px;color:var(--ink-dim);}
+
+  details.evidence{
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:0;margin-bottom:16px;
+  }
+  details.evidence summary{
+    cursor:pointer;list-style:none;padding:16px 24px;font-weight:700;font-size:14.5px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  details.evidence summary::-webkit-details-marker{display:none;}
+  details.evidence summary::after{content:"펼치기";font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-dim);font-weight:500;}
+  details.evidence[open] summary::after{content:"접기";}
+  .evidence-body{padding:0 24px 22px;border-top:1px solid var(--line);}
+  .evidence-body h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-dim);margin:18px 0 8px;}
+  table.kv{width:100%;border-collapse:collapse;font-size:13px;}
+  table.kv td{padding:6px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.kv td:first-child{color:var(--ink-dim);width:42%;padding-right:10px;}
+  table.kv td:last-child{font-family:"IBM Plex Mono",monospace;text-align:right;word-break:break-word;}
+  pre.raw{
+    background:var(--mono-bg);color:var(--mono-ink);border-radius:10px;
+    padding:14px 16px;font-family:"IBM Plex Mono",monospace;font-size:12px;
+    overflow-x:auto;line-height:1.55;margin:0;
+  }
+  pre.raw .k{color:var(--mono-dim);}
+
+  footer{font-size:12.5px;color:var(--ink-dim);line-height:1.6;padding-top:4px;}
+  footer a{color:var(--ink);}
+  footer code{
+    font-family:"IBM Plex Mono",monospace;font-size:11.5px;background:var(--surface-2);
+    padding:1px 5px;border-radius:4px;word-break:break-all;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">
+    <span>과제 4 · 카드 1 — 매일 궁금한 값 하나</span>
+    <span class="status" id="statusPill"><span class="dot"></span><span id="statusText">불러오는 중</span></span>
+  </div>
+
+  <h1>서울 기온 계기판</h1>
+  <p class="sub">공개 기상 API에서 지금 이 순간의 서울 기온을 직접 조회합니다. 로그인·API 키·비밀값이 필요 없습니다.</p>
+
+  <div class="panel">
+    <div class="value-tile">
+      <div class="loc">서울 · 37.5665°N, 126.9780°E</div>
+      <div class="value-row">
+        <span class="value-num" id="valueNum">—</span>
+        <span class="value-unit" id="valueUnit">°C</span>
+      </div>
+      <div class="value-desc" id="valueDesc">조회 중입니다…</div>
+    </div>
+    <div class="meta">
+      <div class="meta-row"><span class="k">출처</span><span class="v" id="mSource">—</span></div>
+      <div class="meta-row"><span class="k">출처 시각 (기상모델 기준시각)</span><span class="v" id="mSourceTime">—</span></div>
+      <div class="meta-row"><span class="k">조회 시각 (이 브라우저 기준)</span><span class="v" id="mQueryTime">—</span></div>
+      <div class="meta-row"><span class="k">기준 시간대</span><span class="v" id="mTz">Asia/Seoul (KST, UTC+9)</span></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="refresh" id="refreshBtn">다시 조회</button>
+    <span class="hint" id="refreshHint">새로고침 없이 최신 값을 다시 가져옵니다.</span>
+  </div>
+
+  <details class="evidence" id="evidenceBox">
+    <summary>원자료 · 저장값 · 화면값 대조 (확인용)</summary>
+    <div class="evidence-body">
+      <h3>원자료 (API가 실제로 돌려준 JSON)</h3>
+      <pre class="raw" id="rawJson">아직 조회 전입니다.</pre>
+
+      <h3>저장값 (이 페이지가 추출해서 저장한 값)</h3>
+      <table class="kv" id="storedTable"><tbody></tbody></table>
+
+      <h3>화면값 (위 카드에 실제로 표시된 값)</h3>
+      <table class="kv" id="displayedTable"><tbody></tbody></table>
+    </div>
+  </details>
+
+  <footer>
+    호출 주소 — 새 시크릿 창에서 그대로 열어도 로그인 없이 JSON이 보입니다:<br>
+    <code id="apiUrlText">—</code><br><br>
+    데이터 제공: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> (무료·비상업 이용 시 API 키 불필요, 계정·CAPTCHA 없음)
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var LAT = 37.5665, LON = 126.9780;
+  var API_URL = "https://api.open-meteo.com/v1/forecast"
+    + "?latitude=" + LAT + "&longitude=" + LON
+    + "&current=temperature_2m,weather_code"
+    + "&timezone=Asia%2FSeoul&timeformat=iso8601";
+
+  document.getElementById("apiUrlText").textContent = API_URL;
+
+  var WMO = {
+    0:"맑음",1:"대체로 맑음",2:"부분 흐림",3:"흐림",
+    45:"안개",48:"착빙 안개",
+    51:"약한 이슬비",53:"이슬비",55:"강한 이슬비",
+    61:"약한 비",63:"비",65:"강한 비",
+    71:"약한 눈",73:"눈",75:"강한 눈",
+    80:"소나기",81:"강한 소나기",82:"매우 강한 소나기",
+    95:"뇌우",96:"뇌우(우박 동반)",99:"강한 뇌우(우박 동반)"
+  };
+
+  var statusPill = document.getElementById("statusPill");
+  var statusText = document.getElementById("statusText");
+  var refreshBtn = document.getElementById("refreshBtn");
+  var refreshHint = document.getElementById("refreshHint");
+
+  function setStatus(state, label){
+    statusPill.setAttribute("data-state", state);
+    statusText.textContent = label;
+  }
+
+  function fmtKST(date){
+    try{
+      return new Intl.DateTimeFormat("ko-KR", {
+        timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit",
+        hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false
+      }).format(date) + " KST";
+    }catch(e){ return date.toISOString(); }
+  }
+
+  function fmtSourceTime(iso){
+    // API returns local Asia/Seoul time with no offset, e.g. "2026-09-17T19:00"
+    return iso.replace("T"," ") + " KST";
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>]/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];
+    });
+  }
+
+  function renderRawJson(raw){
+    var pretty = JSON.stringify(raw, null, 2);
+    document.getElementById("rawJson").textContent = pretty;
+  }
+
+  function kvRows(tbodyId, rows){
+    var tbody = document.querySelector("#" + tbodyId + " tbody");
+    tbody.innerHTML = "";
+    rows.forEach(function(r){
+      var tr = document.createElement("tr");
+      var td1 = document.createElement("td"); td1.textContent = r[0];
+      var td2 = document.createElement("td"); td2.textContent = r[1];
+      tr.appendChild(td1); tr.appendChild(td2);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function render(raw, stored){
+    document.getElementById("valueNum").textContent = stored.value.toFixed(1);
+    document.getElementById("valueUnit").textContent = stored.unit;
+    var desc = WMO[stored.weatherCode];
+    document.getElementById("valueDesc").innerHTML =
+      (desc ? "<b>" + desc + "</b> · " : "") +
+      stored.intervalMin + "분 간격으로 갱신되는 관측/모델 값입니다.";
+
+    document.getElementById("mSource").textContent = "Open-Meteo 공개 예보 API";
+    document.getElementById("mSourceTime").textContent = fmtSourceTime(stored.sourceTimeIso);
+    document.getElementById("mQueryTime").textContent = fmtKST(stored.queryTime);
+    document.getElementById("mTz").textContent = "Asia/Seoul (KST, UTC+" + (stored.utcOffsetSec/3600) + ")";
+
+    renderRawJson(raw);
+
+    kvRows("storedTable", [
+      ["value", stored.value],
+      ["unit", stored.unit],
+      ["weather_code", stored.weatherCode],
+      ["source_time (raw)", stored.sourceTimeIso],
+      ["query_time (ISO)", stored.queryTime.toISOString()],
+      ["timezone", stored.timezone + " (" + stored.timezoneAbbr + ")"],
+      ["utc_offset_seconds", stored.utcOffsetSec]
+    ]);
+
+    kvRows("displayedTable", [
+      ["값+단위", stored.value.toFixed(1) + stored.unit],
+      ["출처 시각", fmtSourceTime(stored.sourceTimeIso)],
+      ["조회 시각", fmtKST(stored.queryTime)],
+      ["기준 시간대", "Asia/Seoul (KST, UTC+" + (stored.utcOffsetSec/3600) + ")"]
+    ]);
+
+    setStatus("ok", "정상 · " + fmtKST(stored.queryTime));
+  }
+
+  function renderError(err){
+    setStatus("err", "조회 실패");
+    document.getElementById("valueDesc").innerHTML =
+      "지금 값을 불러오지 못했습니다 (" + escapeHtml(err && err.message ? err.message : String(err)) + "). " +
+      "마지막으로 성공한 값이 위에 남아 있다면 그 값이 마지막 정상값입니다.";
+    document.getElementById("rawJson").textContent = "이번 조회 실패: " + (err && err.message ? err.message : String(err));
+  }
+
+  async function load(){
+    refreshBtn.disabled = true;
+    setStatus("", "조회 중");
+    try{
+      var res = await fetch(API_URL, {cache:"no-store"});
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      var raw = await res.json();
+      var queryTime = new Date();
+      var stored = {
+        value: raw.current.temperature_2m,
+        unit: raw.current_units.temperature_2m,
+        weatherCode: raw.current.weather_code,
+        intervalMin: Math.round(raw.current.interval / 60),
+        sourceTimeIso: raw.current.time,
+        queryTime: queryTime,
+        timezone: raw.timezone,
+        timezoneAbbr: raw.timezone_abbreviation,
+        utcOffsetSec: raw.utc_offset_seconds
+      };
+      render(raw, stored);
+    }catch(err){
+      renderError(err);
+    }finally{
+      refreshBtn.disabled = false;
+    }
+  }
+
+  refreshBtn.addEventListener("click", load);
+  load();
+})();
+</script>
+</body>
+</html>
