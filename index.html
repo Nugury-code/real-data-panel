@@ -167,6 +167,30 @@
     </div>
   </details>
 
+  <details class="evidence" id="syncBox">
+    <summary>다른 기기 기록 내보내기 · 가져오기</summary>
+    <div class="evidence-body">
+      <p style="font-size:13px;color:var(--ink-dim);line-height:1.6;margin:14px 0 10px;">
+        이 값은 브라우저(기기)마다 따로 저장됩니다. 다른 컴퓨터에서 확인한 기록을 이어 붙이려면,
+        그 기기에서 <b>내보내기</b> 칸의 텍스트를 복사해서 이 기기의 <b>가져오기</b> 칸에 붙여넣고 눌러주세요.
+        실제로 조회해서 저장된 값만 옮기는 용도이며, 값을 임의로 만들어 넣지 않습니다.
+      </p>
+      <h3>일별 기록 (이 기기에 저장된 전체 목록)</h3>
+      <table class="kv" id="dailyTable"><tbody></tbody></table>
+
+      <h3>내보내기 (이 기기의 기록 → 다른 기기로 옮길 때 복사)</h3>
+      <textarea id="exportBox" readonly rows="4" style="width:100%;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--mono-bg);color:var(--mono-ink);border:none;border-radius:8px;padding:10px;"></textarea>
+      <div style="margin-top:8px;"><button class="refresh" id="copyBtn" type="button">복사</button> <span class="hint" id="copyHint"></span></div>
+
+      <h3 style="margin-top:20px;">가져오기 (다른 기기에서 복사한 텍스트를 여기 붙여넣기)</h3>
+      <textarea id="importBox" rows="4" placeholder="다른 기기의 내보내기 텍스트를 여기 붙여넣으세요" style="width:100%;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);"></textarea>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="refresh" id="importBtn" type="button">가져오기</button>
+        <span class="hint" id="importHint"></span>
+      </div>
+    </div>
+  </details>
+
   <footer>
     호출 주소 — 새 시크릿 창에서 그대로 열어도 로그인 없이 JSON이 보입니다:<br>
     <code id="apiUrlText">—</code><br><br>
@@ -415,6 +439,21 @@
       ["기준 시간대", "Asia/Seoul (KST, UTC+9)"]
     ]);
 
+    // 다른 기기 동기화 패널 — 일별 기록 표 + 내보내기 텍스트
+    var dailyRowsForSignal = state.daily_readings.filter(function(r){ return r.signal_id === SIGNAL_ID; });
+    var dailyKv = dailyRowsForSignal.length
+      ? dailyRowsForSignal.map(function(r){
+          return [r.record_date, r.normalized_value.toFixed(1) + r.unit + " (조회 " + r.reading.fetched_at + ")"];
+        })
+      : [["—", "저장된 기록이 없습니다."]];
+    kvRows("dailyTable", dailyKv);
+
+    var exportBoxEl = document.getElementById("exportBox");
+    if (exportBoxEl){
+      var exportList = dailyRowsForSignal.map(function(r){ return r.reading; });
+      exportBoxEl.value = JSON.stringify(exportList, null, 2);
+    }
+
     saveState(state);
   }
 
@@ -490,6 +529,90 @@
       clearTimeout(timer);
       refreshBtn.disabled = false;
     }
+  }
+
+  /* ---------- 다른 기기 기록 내보내기 · 가져오기 ---------- */
+  function upsertReadingRow(targetState, reading){
+    var idx = -1;
+    targetState.daily_readings.forEach(function(r,i){
+      if (r.signal_id === reading.signal_id && r.record_date === reading.record_date) idx = i;
+    });
+    var existing = idx >= 0 ? targetState.daily_readings[idx] : null;
+    var row = {
+      record_id: existing ? existing.record_id : T04.recordIdFor(reading),
+      signal_id: reading.signal_id,
+      record_date: reading.record_date,
+      normalized_value: reading.normalized_value,
+      unit: reading.unit,
+      first_fetched_at: existing ? existing.first_fetched_at : reading.fetched_at,
+      last_fetched_at: reading.fetched_at,
+      reading: JSON.parse(JSON.stringify(reading))
+    };
+    if (idx >= 0) targetState.daily_readings[idx] = row; else targetState.daily_readings.push(row);
+    return row;
+  }
+
+  function importReadings(list){
+    var hint = document.getElementById("importHint");
+    try {
+      if (!Array.isArray(list)) list = [list];
+      if (!list.length) throw new Error("빈 목록입니다.");
+      list.forEach(function(reading){
+        T04.validateNormalizedReading(reading);
+      });
+      list.forEach(function(reading){
+        upsertReadingRow(state, reading);
+      });
+      state.daily_readings.sort(function(a,b){ return a.record_date < b.record_date ? -1 : a.record_date > b.record_date ? 1 : 0; });
+
+      // 현재 조회된 값이 있다면, 새로 들어온 과거 기록을 반영해 전일 대비를 다시 계산한다.
+      var cur = lastGoodRow();
+      if (cur){
+        state.last_comparison = T04.comparisonFor(state.daily_readings, cur);
+        state.last_delta = state.last_comparison.magnitude;
+      }
+
+      saveState(state);
+      render();
+      hint.textContent = list.length + "개 기록을 가져왔습니다.";
+      hint.style.color = "var(--good-ink)";
+      document.getElementById("importBox").value = "";
+    } catch(e){
+      hint.textContent = "가져오기 실패: " + e.message;
+      hint.style.color = "var(--bad-ink)";
+    }
+  }
+
+  var copyBtnEl = document.getElementById("copyBtn");
+  if (copyBtnEl){
+    copyBtnEl.addEventListener("click", function(){
+      var box = document.getElementById("exportBox");
+      var hint = document.getElementById("copyHint");
+      box.focus(); box.select();
+      try { box.setSelectionRange(0, 999999); } catch(e){}
+      function ok(){ hint.textContent = "복사됨"; hint.style.color = "var(--good-ink)"; }
+      function fail(){ hint.textContent = "복사 실패 — 위 칸을 길게 눌러 직접 복사하세요."; hint.style.color = "var(--bad-ink)"; }
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(box.value).then(ok, function(){
+          try { document.execCommand("copy") ? ok() : fail(); } catch(e){ fail(); }
+        });
+      } else {
+        try { document.execCommand("copy") ? ok() : fail(); } catch(e){ fail(); }
+      }
+    });
+  }
+
+  var importBtnEl = document.getElementById("importBtn");
+  if (importBtnEl){
+    importBtnEl.addEventListener("click", function(){
+      var hint = document.getElementById("importHint");
+      var text = document.getElementById("importBox").value.trim();
+      if (!text){ hint.textContent = "붙여넣을 내용이 없습니다."; hint.style.color = "var(--bad-ink)"; return; }
+      var parsed;
+      try { parsed = JSON.parse(text); }
+      catch(e){ hint.textContent = "JSON 형식이 아닙니다: " + e.message; hint.style.color = "var(--bad-ink)"; return; }
+      importReadings(parsed);
+    });
   }
 
   refreshBtn.addEventListener("click", load);
